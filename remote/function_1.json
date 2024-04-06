@@ -1,6 +1,6 @@
 {
     "name": "get_github_data",
-    "description": "Retrieves data from a specific API using a GitHub ID. This function is called only if the data has not been previously retrieved.",
+    "description": "Retrieves data from the API using id as filter if needed. This function is called only if the data has not been previously retrieved or need to be retrived again.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -9,7 +9,7 @@
           "description": "The GitHub ID for which the data needs to be fetched"
         }
       },
-      "required": [
+      "optional": [
         "github_id"
       ]
     }
