@@ -18,8 +18,10 @@ def get_github_profile(id=''):
     return response.text
 
 def get_outputs_for_tool_call(tool_call):
-    print("tool_call.function.arguments\n", tool_call.function.arguments)
-    github_id = json.loads(tool_call.function.arguments)['github_id']
+    print("tool_call.function.arguments\n", tool_call.function)
+    arguments = json.loads(tool_call.function.arguments)
+    github_id = arguments.get('github_id')
+
     profile_data = get_github_profile(github_id)
     return {
         "tool_call_id": tool_call.id,
@@ -62,11 +64,9 @@ def execute_workflow(instruction):
     assistant_id, client = init()
     # Fetch the assistant
     assistant = client.beta.assistants.retrieve(assistant_id=assistant_id)
-
+    print('assistant retrieved.', assistant)
     # Create a thread
-    thread = client.beta.threads.create(
-        
-    )
+    thread = client.beta.threads.create()
     
     # Prompt the model
     print("Prompting the model...", instruction)
