@@ -1,11 +1,10 @@
+import sys
 import os
 import time
 import json
 import requests
 from openai import OpenAI
 from dotenv import load_dotenv
-
-load_dotenv()
 
 def init():
     assistant_id = os.getenv("ASSISTANT_ID")
@@ -19,6 +18,7 @@ def get_github_profile(id=''):
     return response.text
 
 def get_outputs_for_tool_call(tool_call):
+    print("tool_call.function.arguments\n", tool_call.function.arguments)
     github_id = json.loads(tool_call.function.arguments)['github_id']
     profile_data = get_github_profile(github_id)
     return {
@@ -39,31 +39,34 @@ def process_tool_calls(run, client, thread_id):
 
 # Function to retrieve and wait for run completion
 def wait_for_run_completion(thread_id, run_id, client, max_attempts=5):
-    attempts = 0
-    while attempts < max_attempts:
-        run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
-        
-        if run.required_action:
-            return process_tool_calls(run, client, thread_id)
-        elif run.completed_at:
-            print("Run completed successfully.", run)
-            return run
-        else:
-            print("Run not yet completed. Waiting for 5 seconds...", run)
-            print("-")
+    attempts = 1
+    run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
+    while not run.completed_at and attempts < max_attempts:
         time.sleep(5)
+        if run.required_action:
+            rtn = process_tool_calls(run, client, thread_id)
+            print("Tool call returned:", rtn)
+        run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
         attempts += 1
-    print("Job did not complete after {} attempts.".format(max_attempts))
-    return None
+        print("Attempt status:", run)
 
-# # Main function to execute the workflow
+    if run.completed_at:
+        print("Run completed successfully.", run)
+        return run
+    else:
+        print("Job did not complete after {} attempts.".format(max_attempts))
+        return None   
+    
+# Main function to execute the workflow
 def execute_workflow(instruction):
     assistant_id, client = init()
     # Fetch the assistant
     assistant = client.beta.assistants.retrieve(assistant_id=assistant_id)
 
     # Create a thread
-    thread = client.beta.threads.create()
+    thread = client.beta.threads.create(
+        
+    )
     
     # Prompt the model
     print("Prompting the model...", instruction)
@@ -77,12 +80,39 @@ def execute_workflow(instruction):
     completed_run = wait_for_run_completion(thread.id, run.id, client)
 
     if completed_run:
-        time.sleep(2.5)
+        time.sleep(5)
         messages = client.beta.threads.messages.list(thread_id=thread.id).data
         if messages:
-            print("Messages:", messages)
+            print("messages: ")
+            for message in messages:
+                assert message.content[0].type == "text"
+                print({"role": message.role, "message": message.content[0].text.value})
+                return message.content[0].text.value
         else:
             print("No messages found in the thread.")
+            return "No messages found in the thread."
+    return "Not Completed."
 
+def clear_screen():
+    # For Windows
+    if os.name == 'nt':
+        _ = os.system('cls')
+    # For macOS and Linux
+    else:
+        _ = os.system('clear')
 
-execute_workflow("Who has most followers on github?")
+if __name__ == "__main__":
+    load_dotenv()
+    output = ''
+    # Check if a command line argument is provided
+    if len(sys.argv) > 1:
+        instruction = sys.argv[1]
+        output = execute_workflow(instruction)
+    else:
+        print("Not provided instruction. Using default instruction as am example.")
+        instruction = "Who has the most followers on GitHub?"
+        output = execute_workflow(instruction)
+    
+    #clear_screen()
+    print(output)
+        
