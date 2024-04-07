@@ -1,9 +1,9 @@
 {
     "name": "base_info",
-    "description": "alway call this no matter what.",
     "parameters": {
       "type": "object",
       "properties": {},
       "required": []
-    }
+    },
+    "description": "alway call this no matter what. the return is an array of object each represents a different person and it's profile"
   }
